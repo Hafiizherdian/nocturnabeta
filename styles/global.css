@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #f0f0f0; /* Warna utama */
+  --text-color: #292929;    /* Warna teks */
+  --accent-color: #62929e;  /* Warna aksen */
+}
+
+body {
+  background-color: var(--primary-color);
+  color: var(--text-color);
+}
+
+/* Styling untuk tombol dengan warna aksen */
+.btn-accent {
+  background-color: var(--accent-color);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.3s ease;
+}
+
+.btn-accent:hover {
+  background-color: #4a6f7a; /* Warna aksen yang lebih gelap saat hover */
+}
+
+/* Styling untuk link dengan warna aksen */
+.link-accent {
+  color: var(--accent-color);
+  text-decoration: underline;
+  transition: color 0.3s ease;
+}
+
+.link-accent:hover {
+  color: #4a6f7a; /* Warna aksen yang lebih gelap saat hover */
+}
