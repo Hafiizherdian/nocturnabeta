@@ -2,22 +2,43 @@ import Link from "next/link";
 
 export default function DashboardPage() {
   return (
-    <div className="p-4 bg-[#f0f0f0] min-h-screen">
-      <h1 className="text-2xl font-bold mb-4 text-[#292929]">Dashboard</h1>
-      <div className="space-y-4">
-        <Link
-          href="/dashboard/generate-soal"
-          className="block bg-[#62929e] text-[#f0f0f0] p-2 rounded-lg text-center hover:bg-[#4a6f7a] transition duration-300"
-        >
-          Generate Soal
-        </Link>
-        <Link
-          href="/manage-soal"
-          className="block bg-[#62929e] text-[#f0f0f0] p-2 rounded-lg text-center hover:bg-[#4a6f7a] transition duration-300"
-        >
-          Manage Soal
-        </Link>
+    <>
+    <div className="flex justify-between">
+    <Link href="/dashboard/generate-soal" className="relative block rounded-tr-3xl border border-gray-100">
+
+          <div className="p-4 text-center">
+              <strong className="text-xl font-medium text-gray-900"> Generate </strong>
+
+              <p className="mt-2 text-pretty text-gray-700">
+                  Lorem ipsum dolor sit amet consectetur adipisicing elit. Amet officia rem vel voluptatum in
+                  eum vitae aliquid at sed dignissimos.
+              </p>
+
+              <span
+                  className="mt-4 block rounded-md border border-indigo-900 bg-indigo-900 px-5 py-3 text-sm font-medium uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-indigo-900"
+              >
+                  Generate Soal
+              </span>
+          </div>
+      </Link>
+      <Link href="/dashboard/manage-soal" className="relative block rounded-tr-3xl border border-gray-100">
+
+              <div className="p-4 text-center">
+                  <strong className="text-xl font-medium text-gray-900"> Manage </strong>
+
+                  <p className="mt-2 text-pretty text-gray-700">
+                      Lorem ipsum dolor sit amet consectetur adipisicing elit. Amet officia rem vel voluptatum in
+                      eum vitae aliquid at sed dignissimos.
+                  </p>
+
+                  <span
+                      className="mt-4 block rounded-md border border-indigo-900 bg-indigo-900 px-5 py-3 text-sm font-medium uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-indigo-900"
+                  >
+                      Manage Soal
+                  </span>
+              </div>
+      </Link>
       </div>
-    </div>
+      </>
   );
 }
