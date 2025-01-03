@@ -19,7 +19,7 @@ model Soal {
   id        Int      @id @default(autoincrement())
   pertanyaan String
   jenis      String   
-  pilihan    String 
+  pilihan    String[] 
   jawaban    String   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

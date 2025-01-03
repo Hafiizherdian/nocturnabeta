@@ -28,9 +28,9 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   pages: {
-    signIn: "/login",
+    signIn: "/login", // Halaman login kustom
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET, // Secret untuk enkripsi session
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
