@@ -1,74 +1,151 @@
-"use client"; // Menandakan bahwa komponen ini adalah Client Component dalam Next.js.
-              // Diperlukan karena komponen menggunakan hooks dan fungsi yang hanya tersedia di sisi client.
+"use client";
 
-import { signIn } from "next-auth/react"; // Mengimpor fungsi `signIn` dari NextAuth untuk proses login.
-import { useRouter } from "next/navigation"; // Mengimpor `useRouter` dari Next.js untuk navigasi programatik.
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 
-// Komponen `LoginForm` untuk menangani form login.
 export default function LoginForm() {
-  const router = useRouter(); // Menginisialisasi `useRouter` untuk navigasi.
+  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Fungsi untuk menangani submit form.
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Mencegah perilaku default form (reload halaman).
-
-    // Mengambil data dari form menggunakan `FormData`.
+    e.preventDefault();
+    setLoading(true);
+    
     const formData = new FormData(e.target as HTMLFormElement);
-    const email = formData.get("email") as string; // Mengambil nilai input email.
-    const password = formData.get("password") as string; // Mengambil nilai input password.
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
 
-    // Melakukan proses login menggunakan NextAuth dengan provider "credentials".
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false, // Menonaktifkan redirect otomatis untuk menangani hasil login secara manual.
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    console.log("Login result:", result); // Debugging: Mencatat hasil login ke console.
-
-    // Jika login gagal, tampilkan pesan error.
-    if (result?.error) {
-      alert("Login gagal: " + result.error); // Menampilkan alert dengan pesan error.
-    } else {
-      // Jika login berhasil, redirect ke halaman dashboard.
-      router.push("/dashboard");
+      if (result?.error) {
+        alert("Login gagal: " + result.error);
+      } else {
+        router.push("/dashboard");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    // Form login dengan event handler `onSubmit`.
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Input untuk email */}
+      {/* Email input */}
       <div>
-        <label className="block text-sm font-medium mb-1 text-[#292929]">Email</label>
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          required
-          className="w-full p-2 border rounded text-[#292929]"
-        />
+        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          Email
+        </label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            className="block w-full pl-10 pr-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Masukkan email Anda"
+          />
+        </div>
       </div>
 
-      {/* Input untuk password */}
+      {/* Password input */}
       <div>
-        <label className="block text-sm font-medium mb-1 text-[#292929]">Password</label>
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          required
-          className="w-full p-2 border rounded text-[#292929]"
-        />
+        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          Password
+        </label>
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            className="block w-full pl-10 pr-10 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Masukkan password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* Tombol submit untuk login */}
+      {/* Forgot password link */}
+      <div className="flex justify-end">
+        <a href="#" className="text-xs text-blue-600 hover:text-blue-800">
+          Lupa password?
+        </a>
+      </div>
+
+      {/* Login button */}
       <button
         type="submit"
-        className="w-full bg-[#62929e] text-[#f0f0f0] p-2 rounded-lg hover:bg-[#4a6f7a] transition duration-300"
+        disabled={loading}
+        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
       >
-        Login
+        {loading ? "Memproses..." : "Masuk"}
       </button>
+
+      {/* Social login */}
+      <div className="mt-4">
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="px-2 bg-white text-gray-500">
+              Atau masuk dengan
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            className="flex items-center justify-center px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <img
+              className="h-4 w-4 mr-2"
+              src="/api/placeholder/16/16"
+              alt="Google"
+            />
+            Google
+          </button>
+          <button
+            type="button"
+            className="flex items-center justify-center px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <img
+              className="h-4 w-4 mr-2"
+              src="/api/placeholder/16/16"
+              alt="Facebook"
+            />
+            Facebook
+          </button>
+        </div>
+      </div>
+
+      {/* Register link */}
+      <p className="mt-4 text-center text-xs text-gray-600">
+        Belum punya akun?{" "}
+        <a href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+          Daftar sekarang
+        </a>
+      </p>
     </form>
   );
 }

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Soal" ALTER COLUMN "jawaban" DROP DEFAULT,
+ALTER COLUMN "jawaban" SET DATA TYPE JSONB;

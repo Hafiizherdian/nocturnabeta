@@ -1,114 +1,229 @@
-"use client"; // Menandakan bahwa komponen ini adalah Client Component dalam Next.js.
-              // Diperlukan karena komponen menggunakan hooks seperti `useState`, `useEffect`, dan `useRouter`.
+"use client";
 
-import { useRouter } from "next/navigation"; // Mengimpor `useRouter` dari Next.js untuk navigasi programatik.
-import { useEffect, useState } from "react"; // Mengimpor `useEffect` dan `useState` dari React untuk manajemen state dan side effects.
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Save, Trash2, ArrowLeft, Loader2, Check, X } from "lucide-react";
 
-// Komponen utama `EditSoalPage` untuk mengedit soal berdasarkan ID yang diberikan.
+type Soal = {
+  id: number;
+  pertanyaan: string;
+  jenis: string;
+  pilihan: string[];
+  jawaban: any; // Menggunakan tipe any karena jawaban berisi JSON atau string
+  createdAt: string;
+  updatedAt: string;
+};
+
 export default function EditSoalPage({ params }: { params: { id: string } }) {
-  const router = useRouter(); // Menginisialisasi `useRouter` untuk navigasi.
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [pertanyaan, setPertanyaan] = useState("");
+  const [jenis, setJenis] = useState("pilihan_ganda");
+  const [pilihan, setPilihan] = useState<string[]>([]);
+  const [jawaban, setJawaban] = useState<any>({}); // State untuk menyimpan JSON atau string jawaban
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  // State untuk menyimpan data soal yang akan diedit.
-  const [pertanyaan, setPertanyaan] = useState(""); // State untuk pertanyaan.
-  const [jenis, setJenis] = useState("pilihan_ganda"); // State untuk jenis soal (default: pilihan ganda).
-  const [pilihan, setPilihan] = useState<string[]>([]); // State untuk pilihan jawaban (jika jenis soal adalah pilihan ganda).
-  const [jawaban, setJawaban] = useState(""); // State untuk jawaban.
-
-  // `useEffect` untuk mengambil data soal dari API berdasarkan ID saat komponen di-mount.
+  // Load soal data
   useEffect(() => {
-    fetch(`/api/soal/${params.id}`) // Mengirim request GET ke endpoint `/api/soal/{id}`.
-      .then((res) => res.json()) // Mengubah response menjadi JSON.
-      .then((data) => {
-        // Mengisi state dengan data yang diterima dari API.
-        setPertanyaan(data.pertanyaan);
-        setJenis(data.jenis);
-        setPilihan(data.pilihan || []); // Jika `pilihan` tidak ada, gunakan array kosong.
-        setJawaban(data.jawaban);
-      });
-  }, [params.id]); // Dependency array dengan `params.id` memastikan efek dijalankan ulang jika ID berubah.
+    loadSoal();
+  }, [params.id]);
 
-  // Fungsi untuk mengupdate soal.
+  const loadSoal = async () => {
+    try {
+      const res = await fetch(`/api/soal/${params.id}`);
+      if (!res.ok) throw new Error("Soal tidak ditemukan");
+      const data: Soal = await res.json();
+      setPertanyaan(data.pertanyaan);
+      setJenis(data.jenis);
+      setPilihan(data.pilihan || []);
+      setJawaban(data.jawaban); // Set jawaban sebagai JSON atau string
+    } catch (error) {
+      setError("Gagal mengambil data soal");
+      console.error("Error fetching soal:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle update soal
   const handleUpdate = async () => {
-    await fetch(`/api/soal/${params.id}`, {
-      method: "PUT", // Menggunakan metode PUT untuk update.
-      headers: { "Content-Type": "application/json" }, // Menetapkan header Content-Type.
-      body: JSON.stringify({ pertanyaan, jenis, pilihan, jawaban }), // Mengirim data yang diperbarui dalam bentuk JSON.
-    });
-    router.push("/dashboard/manage-soal"); // Navigasi ke halaman manage soal setelah update.
+    setError("");
+    setSuccessMessage("");
+
+    if (!pertanyaan.trim() || !jawaban) {
+      setError("Pertanyaan dan jawaban tidak boleh kosong");
+      return;
+    }
+
+    // Validasi jawaban
+    let parsedJawaban;
+    if (typeof jawaban === "string") {
+      try {
+        parsedJawaban = JSON.parse(jawaban); // Coba parse jika jawaban adalah string JSON
+      } catch (error) {
+        setError("Format jawaban tidak valid. Harap masukkan JSON yang valid.");
+        return;
+      }
+    } else {
+      parsedJawaban = jawaban; // Jika jawaban sudah berupa objek, gunakan langsung
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/soal/${params.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pertanyaan, jenis, pilihan, jawaban: parsedJawaban }),
+      });
+
+      if (!res.ok) throw new Error("Gagal menyimpan perubahan");
+
+      setSuccessMessage("Perubahan berhasil disimpan");
+      setTimeout(() => router.push("/dashboard/manage-soal"), 1500);
+    } catch (error) {
+      setError("Gagal menyimpan perubahan");
+      console.error("Error updating soal:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // Fungsi untuk menghapus soal.
+  // Handle delete soal
   const handleDelete = async () => {
-    await fetch(`/api/soal/${params.id}`, {
-      method: "DELETE", // Menggunakan metode DELETE untuk menghapus.
-    });
-    router.push("/dashboard/manage-soal"); // Navigasi ke halaman manage soal setelah penghapusan.
+    if (!confirm("Apakah Anda yakin ingin menghapus soal ini?")) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/soal/${params.id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Gagal menghapus soal");
+
+      setSuccessMessage("Soal berhasil dihapus");
+      setTimeout(() => router.push("/dashboard/manage-soal"), 1500);
+    } catch (error) {
+      setError("Gagal menghapus soal");
+      console.error("Error deleting soal:", error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+          <p className="text-gray-900 font-medium">Memuat data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      {/* Judul halaman */}
-      <h1 className="text-2xl font-bold mb-4 text-[#292929]">Edit Soal</h1>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center text-gray-900 hover:text-blue-600 transition-colors duration-200 group"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform duration-200" />
+            <span className="font-medium">Kembali</span>
+          </button>
 
-      {/* Input untuk pertanyaan */}
-      <textarea
-        value={pertanyaan}
-        onChange={(e) => setPertanyaan(e.target.value)} // Memperbarui state `pertanyaan` saat input berubah.
-        className="w-full p-2 border rounded mb-4 text-[#292929]"
-      />
-
-      {/* Dropdown untuk memilih jenis soal */}
-      <select
-        value={jenis}
-        onChange={(e) => setJenis(e.target.value)} // Memperbarui state `jenis` saat pilihan berubah.
-        className="w-full p-2 border rounded mb-4 text-[#292929]"
-      >
-        <option value="pilihan_ganda">Pilihan Ganda</option>
-        <option value="esai">Esai Singkat</option>
-      </select>
-
-      {/* Input untuk pilihan jawaban (jika jenis soal adalah pilihan ganda) */}
-      {jenis === "pilihan_ganda" && (
-        <div className="mb-4">
-          <h3 className="text-lg font-medium mb-2 text-[#292929]">Pilihan Jawaban</h3>
-          {pilihan.map((p, index) => (
-            <input
-              key={index}
-              value={p}
-              onChange={(e) => {
-                const newPilihan = [...pilihan]; // Membuat salinan array `pilihan`.
-                newPilihan[index] = e.target.value; // Memperbarui nilai pilihan yang sesuai.
-                setPilihan(newPilihan); // Memperbarui state `pilihan`.
-              }}
-              className="w-full p-2 border rounded mb-2 text-[#292929]"
-            />
-          ))}
+          {/* Status Messages */}
+          {error && (
+            <div className="flex items-center bg-red-50 text-red-600 px-4 py-2 rounded-lg">
+              <X className="w-5 h-5 mr-2" />
+              {error}
+            </div>
+          )}
+          {successMessage && (
+            <div className="flex items-center bg-green-50 text-green-600 px-4 py-2 rounded-lg">
+              <Check className="w-5 h-5 mr-2" />
+              {successMessage}
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Input untuk jawaban */}
-      <textarea
-        value={jawaban}
-        onChange={(e) => setJawaban(e.target.value)} // Memperbarui state `jawaban` saat input berubah.
-        placeholder="Jawaban"
-        className="w-full p-2 border rounded mb-4 text-[#292929]"
-      />
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200">
+          <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
+            <h1 className="text-2xl font-bold text-gray-900">Edit Soal</h1>
+          </div>
 
-      {/* Tombol untuk mengupdate soal */}
-      <button
-        onClick={handleUpdate}
-        className="bg-[#62929e] text-[#f0f0f0] p-2 rounded-lg hover:bg-[#4a6f7a] transition duration-300 mr-2"
-      >
-        Update Soal
-      </button>
+          <div className="p-6 space-y-6">
+            {/* Pertanyaan */}
+            <div className="space-y-2">
+              <label className="block text-base font-semibold text-gray-900">
+                Topik Soal
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <textarea
+                value={pertanyaan}
+                onChange={(e) => setPertanyaan(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none min-h-[120px] text-gray-900"
+                placeholder="Masukkan topik soal..."
+              />
+            </div>
 
-      {/* Tombol untuk menghapus soal */}
-      <button
-        onClick={handleDelete}
-        className="bg-red-500 text-[#f0f0f0] p-2 rounded-lg hover:bg-red-600 transition duration-300"
-      >
-        Delete Soal
-      </button>
+            {/* Jawaban (Soal Lengkap) */}
+            <div className="space-y-2">
+              <label className="block text-base font-semibold text-gray-900">
+                Soal Lengkap 
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <textarea
+                value={typeof jawaban === "string" ? jawaban : JSON.stringify(jawaban, null, 2)}
+                onChange={(e) => {
+                  try {
+                    const parsedJawaban = JSON.parse(e.target.value);
+                    setJawaban(parsedJawaban);
+                    setError("");
+                  } catch (error) {
+                    setJawaban(e.target.value); // Simpan sebagai string jika tidak valid JSON
+                    setError("Format JSON tidak valid");
+                  }
+                }}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none min-h-[300px] text-gray-900 font-mono"
+                placeholder="Masukkan soal lengkap dalam format JSON..."
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-between items-center">
+            <button
+              onClick={handleDelete}
+              className="flex items-center px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors duration-200 font-medium"
+              disabled={isSaving || isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="w-5 h-5 mr-2" />
+              )}
+              {isDeleting ? "Menghapus..." : "Hapus Soal"}
+            </button>
+            <button
+              onClick={handleUpdate}
+              disabled={isSaving || isDeleting}
+              className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium disabled:bg-blue-400"
+            >
+              {isSaving ? (
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-5 h-5 mr-2" />
+              )}
+              {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

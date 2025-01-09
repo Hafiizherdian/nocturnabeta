@@ -7,7 +7,7 @@ export async function POST(request: Request) {
 
   try {
     body = await request.json();
-    console.log("Request body:", body);
+    console.log(`[${new Date().toISOString()}] Request body:`, body);
 
     // Validasi: Pastikan body ada dan berisi data yang diperlukan
     if (!body || typeof body !== "object") {
@@ -19,9 +19,18 @@ export async function POST(request: Request) {
 
     const { prompt, jenis } = body;
 
+    // Validasi: Pastikan prompt dan jenis ada
     if (!prompt || !jenis) {
       return NextResponse.json(
         { error: "Prompt dan jenis soal diperlukan" },
+        { status: 400 }
+      );
+    }
+
+    // Validasi: Pastikan jenis soal valid
+    if (!["pilihan_ganda", "esai"].includes(jenis)) {
+      return NextResponse.json(
+        { error: "Jenis soal harus berupa 'pilihan_ganda' atau 'esai'" },
         { status: 400 }
       );
     }
@@ -36,27 +45,30 @@ export async function POST(request: Request) {
         : `Buat soal esai singkat tentang ${prompt}`
     );
 
-    if (!generatedSoal) {
+    // Validasi: Pastikan hasil generate valid
+    if (!generatedSoal || typeof generatedSoal !== "string") {
+      console.error("Generated soal is invalid:", generatedSoal);
       return NextResponse.json(
-        { error: "Gagal menghasilkan soal" },
+        { error: "Hasil generate soal tidak valid" },
         { status: 500 }
       );
     }
 
     console.log("Generated soal:", generatedSoal);
 
-    // Data untuk disimpan ke Prisma
-    const soalData = {
-      pertanyaan: prompt,
-      jenis,
-      pilihan: jenis === "pilihan_ganda" ? ["A", "B", "C", "D"] : [],
-      jawaban: generatedSoal || "",
-    };
+// Data untuk disimpan ke Prisma
+const soalData = {
+  pertanyaan: prompt,
+  jenis,
+  pilihan: jenis === "pilihan_ganda" ? ["A", "B", "C", "D"] : [],
+  jawaban: generatedSoal, // Simpan sebagai string biasa
+};
 
-    console.log("Data to be saved in Prisma:", soalData);
+console.log("Data to be saved in Prisma:", soalData);
 
     // Validasi data
-    if (!soalData.pertanyaan || !soalData.jenis || !soalData.jawaban) {
+    if (!soalData || typeof soalData !== "object") {
+      console.error("Invalid soalData:", soalData);
       return NextResponse.json(
         { error: "Data soal tidak valid" },
         { status: 400 }
@@ -64,22 +76,29 @@ export async function POST(request: Request) {
     }
 
     // Simpan ke database
-    const soal = await prisma.soal.create({
-      data: soalData,
-    });
-
-    return NextResponse.json({ soal });
+    try {
+      const soal = await prisma.soal.create({
+        data: soalData,
+      });
+      console.log("Soal saved successfully:", soal);
+      return NextResponse.json({ soal });
+    } catch (error) {
+      console.error("Database error:", error);
+      return NextResponse.json(
+        { error: "Gagal menyimpan soal ke database" },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error("Error in route:", String(error)); // Gunakan String(error) untuk memastikan error tercetak
+    console.error("Error in route:", error);
 
-    if (body) {
-      console.log("Request body:", body);
-    } else {
-      console.log("Request body is null or undefined");
+    let errorMessage = "Terjadi kesalahan saat generate soal";
+    if (error instanceof Error) {
+      errorMessage = error.message;
     }
 
     return NextResponse.json(
-      { error: "Terjadi kesalahan saat generate soal" },
+      { error: errorMessage },
       { status: 500 }
     );
   }
