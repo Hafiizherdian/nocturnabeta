@@ -3,15 +3,71 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Trash2, ArrowLeft, Loader2, Check, X } from "lucide-react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Heading from "@tiptap/extension-heading";
+import Image from "@tiptap/extension-image";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
 
 type Soal = {
   id: number;
   pertanyaan: string;
   jenis: string;
   pilihan: string[];
-  jawaban: any; // Menggunakan tipe any karena jawaban berisi JSON atau string
+  jawaban: string; // Jawaban dalam format string HTML
   createdAt: string;
   updatedAt: string;
+};
+
+// Tiptap Toolbar Component
+const Toolbar = ({ editor }: { editor: any }) => {
+  if (!editor) {
+    return null;
+  }
+
+  return (
+    <div className="border-b border-gray-200 p-2 flex flex-wrap gap-2">
+      <button
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        className={`p-2 rounded ${editor.isActive("bold") ? "bg-gray-200" : "hover:bg-gray-100"}`}
+      >
+        Bold
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        className={`p-2 rounded ${editor.isActive("italic") ? "bg-gray-200" : "hover:bg-gray-100"}`}
+      >
+        Italic
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        className={`p-2 rounded ${editor.isActive("heading", { level: 2 }) ? "bg-gray-200" : "hover:bg-gray-100"}`}
+      >
+        H2
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        className={`p-2 rounded ${editor.isActive("bulletList") ? "bg-gray-200" : "hover:bg-gray-100"}`}
+      >
+        Bullet List
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        className={`p-2 rounded ${editor.isActive("orderedList") ? "bg-gray-200" : "hover:bg-gray-100"}`}
+      >
+        Ordered List
+      </button>
+      <button
+        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+        className="p-2 rounded hover:bg-gray-100"
+      >
+        Insert Table
+      </button>
+    </div>
+  );
 };
 
 export default function EditSoalPage({ params }: { params: { id: string } }) {
@@ -22,24 +78,50 @@ export default function EditSoalPage({ params }: { params: { id: string } }) {
   const [pertanyaan, setPertanyaan] = useState("");
   const [jenis, setJenis] = useState("pilihan_ganda");
   const [pilihan, setPilihan] = useState<string[]>([]);
-  const [jawaban, setJawaban] = useState<any>({}); // State untuk menyimpan JSON atau string jawaban
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [initialContent, setInitialContent] = useState("");
+
+
+  // Tiptap Editor
+  // Initialize editor with empty content first
+  const editor = useEditor({
+    extensions: [StarterKit, Heading, Image, Table, TableRow, TableCell, TableHeader],
+    content: initialContent,
+    editorProps: {
+      attributes: {
+        class: "prose max-w-none focus:outline-none min-h-[300px] p-4",
+      },
+    },
+  });
 
   // Load soal data
   useEffect(() => {
+    if (!params.id) {
+      setError("ID soal tidak valid");
+      setIsLoading(false);
+      return;
+    }
     loadSoal();
   }, [params.id]);
+
+  // Update editor content when initialContent changes
+  useEffect(() => {
+    if (editor && initialContent) {
+      editor.commands.setContent(initialContent);
+    }
+  }, [editor, initialContent]);
 
   const loadSoal = async () => {
     try {
       const res = await fetch(`/api/soal/${params.id}`);
       if (!res.ok) throw new Error("Soal tidak ditemukan");
       const data: Soal = await res.json();
+
       setPertanyaan(data.pertanyaan);
       setJenis(data.jenis);
       setPilihan(data.pilihan || []);
-      setJawaban(data.jawaban); // Set jawaban sebagai JSON atau string
+      setInitialContent(data.jawaban);
     } catch (error) {
       setError("Gagal mengambil data soal");
       console.error("Error fetching soal:", error);
@@ -53,22 +135,9 @@ export default function EditSoalPage({ params }: { params: { id: string } }) {
     setError("");
     setSuccessMessage("");
 
-    if (!pertanyaan.trim() || !jawaban) {
-      setError("Pertanyaan dan jawaban tidak boleh kosong");
+    if (!pertanyaan.trim() || !editor?.getHTML()) {
+      setError("Pertanyaan dan soal lengkap tidak boleh kosong");
       return;
-    }
-
-    // Validasi jawaban
-    let parsedJawaban;
-    if (typeof jawaban === "string") {
-      try {
-        parsedJawaban = JSON.parse(jawaban); // Coba parse jika jawaban adalah string JSON
-      } catch (error) {
-        setError("Format jawaban tidak valid. Harap masukkan JSON yang valid.");
-        return;
-      }
-    } else {
-      parsedJawaban = jawaban; // Jika jawaban sudah berupa objek, gunakan langsung
     }
 
     setIsSaving(true);
@@ -76,7 +145,12 @@ export default function EditSoalPage({ params }: { params: { id: string } }) {
       const res = await fetch(`/api/soal/${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pertanyaan, jenis, pilihan, jawaban: parsedJawaban }),
+        body: JSON.stringify({
+          pertanyaan,
+          jenis,
+          pilihan,
+          jawaban: editor.getHTML(),
+        }),
       });
 
       if (!res.ok) throw new Error("Gagal menyimpan perubahan");
@@ -171,27 +245,16 @@ export default function EditSoalPage({ params }: { params: { id: string } }) {
               />
             </div>
 
-            {/* Jawaban (Soal Lengkap) */}
+            {/* Soal Lengkap with Tiptap */}
             <div className="space-y-2">
               <label className="block text-base font-semibold text-gray-900">
-                Soal Lengkap 
+                Soal Lengkap
                 <span className="text-red-500 ml-1">*</span>
               </label>
-              <textarea
-                value={typeof jawaban === "string" ? jawaban : JSON.stringify(jawaban, null, 2)}
-                onChange={(e) => {
-                  try {
-                    const parsedJawaban = JSON.parse(e.target.value);
-                    setJawaban(parsedJawaban);
-                    setError("");
-                  } catch (error) {
-                    setJawaban(e.target.value); // Simpan sebagai string jika tidak valid JSON
-                    setError("Format JSON tidak valid");
-                  }
-                }}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none min-h-[300px] text-gray-900 font-mono"
-                placeholder="Masukkan soal lengkap dalam format JSON..."
-              />
+              <div className="border border-gray-300 rounded-lg overflow-hidden text-gray-900">
+                <Toolbar editor={editor} />
+                <EditorContent editor={editor} />
+              </div>
             </div>
           </div>
 
@@ -226,4 +289,8 @@ export default function EditSoalPage({ params }: { params: { id: string } }) {
       </div>
     </div>
   );
+}
+
+function setInitialContent(jawaban: string) {
+  throw new Error("Function not implemented.");
 }
