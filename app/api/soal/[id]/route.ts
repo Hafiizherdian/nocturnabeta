@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+type Props = {
+  params: { id: string }
+}
+
+export async function GET(request: Request, { params }: Props) {
   try {
-    const id = params.id;
-
-    if (!id || typeof id !== "string") {
-      return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
-    }
-
     const soal = await prisma.soal.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(params.id) },
     });
 
     if (!soal) {
@@ -30,22 +25,13 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: Request, { params }: Props) {
   try {
-    const id = params.id;
-
-    if (!id || typeof id !== "string") {
-      return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
-    }
-
     const body = await request.json();
     const { pertanyaan, jenis, pilihan, jawaban } = body;
 
     const updatedSoal = await prisma.soal.update({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(params.id) },
       data: { pertanyaan, jenis, pilihan, jawaban },
     });
 
@@ -59,19 +45,10 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: Request, { params }: Props) {
   try {
-    const id = params.id;
-
-    if (!id || typeof id !== "string") {
-      return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
-    }
-
     await prisma.soal.delete({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(params.id) },
     });
 
     return NextResponse.json({ message: "Soal berhasil dihapus" });
